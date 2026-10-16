@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1B6B34">
+<meta name="mobile-web-app-capable" content="yes">
+<style>:root{color-scheme:light;padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<title>AgroColor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: herramienta de campo para una mano. Contenido arriba, cuatro pestañas abajo,
+   el cuadro de cámara es el protagonista. Botones de 56 px o más, texto de 16 px o más. */
+:root {
+  --bg: #EEF2EA;
+  --surface: #FFFFFF;
+  --surface2: #DFE7D8;
+  --ink: #0E1A10;
+  --ink2: #3F4E45;
+  --line: #B4C2AC;
+  --accent: #1B6B34;
+  --accent-ink: #FFFFFF;
+  --focus: #0A5CD6;
+  --ok: #17692F;
+  --stage: #000000;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A110B; --surface: #142018; --surface2: #1F2E23; --ink: #EAF3E6; --ink2: #A9BBA8;
+    --line: #35493B; --accent: #5DD27A; --accent-ink: #06200E; --focus: #7DB4FF; --ok: #6EE08B;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A110B; --surface: #142018; --surface2: #1F2E23; --ink: #EAF3E6; --ink2: #A9BBA8;
+  --line: #35493B; --accent: #5DD27A; --accent-ink: #06200E; --focus: #7DB4FF; --ok: #6EE08B;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.4 var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+h1 { font-size: 28px; line-height: 1.1; font-weight: 800; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+h2 { font-size: 18px; font-weight: 800; margin: 0; }
+p { margin: 0; }
+.muted { color: var(--ink2); }
+.num { font-variant-numeric: tabular-nums; }
+.label { font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink2); }
+
+#main { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 16px; }
+.view { display: flex; flex-direction: column; gap: 16px; }
+.head { display: flex; flex-direction: column; gap: 4px; }
+.brand { font-size: 16px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.block { display: flex; flex-direction: column; gap: 10px; }
+
+/* Botones */
+.btn {
+  min-height: 56px; padding: 0 20px; border: 0; border-radius: 14px;
+  font-size: 17px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  background: var(--surface2); color: var(--ink); text-align: center; text-decoration: none; user-select: none;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.big { min-height: 64px; font-size: 20px; }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > .btn { flex: 1 1 140px; }
+
+/* Control segmentado */
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: var(--surface2); padding: 4px; border-radius: 16px; }
+.seg button { min-height: 56px; border: 0; border-radius: 12px; background: transparent; font-weight: 800; min-width: 0; padding: 0 6px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+/* Niveles */
+.levels { display: flex; flex-direction: column; gap: 8px; }
+.lvl {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  min-height: 72px; padding: 8px 14px 8px 10px; text-align: left; border-radius: 16px;
+  background: var(--surface); border: 3px solid var(--line);
+}
+.lvl[aria-pressed="true"] { border-color: var(--accent); }
+.lvl .sw { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 24px; font-weight: 800; }
+.lvl .t { display: flex; flex-direction: column; min-width: 0; }
+.lvl .t b { font-size: 18px; }
+.lvl .t span { font-size: 16px; color: var(--ink2); }
+.lvl .tag { font-weight: 800; font-size: 16px; color: var(--accent); min-width: 28px; text-align: right; }
+.summary { font-size: 18px; font-weight: 700; }
+
+/* Escenario de cámara */
+.stage { position: relative; background: var(--stage); border-radius: 16px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: auto; max-height: 50vh; object-fit: contain; }
+.pill {
+  position: absolute; left: 10px; top: 10px; display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(0,0,0,0.78); color: #fff; border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: 17px;
+}
+.pill i { width: 14px; height: 14px; border-radius: 50%; background: #fff; display: inline-block; }
+.pill.warn i { background: #ffd23f; }
+.tag2 { position: absolute; right: 10px; top: 10px; background: rgba(0,0,0,0.6); color: #fff; border-radius: 8px; padding: 3px 8px; font: 12px/1.3 var(--mono); }
+.chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface2); border-radius: 999px; padding: 6px 14px; font-weight: 700; min-height: 40px; }
+.chip.tint { background: transparent; border: 2px solid var(--line); }
+.legend { display: flex; gap: 8px 18px; flex-wrap: wrap; font-weight: 700; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; color: #000; font-style: normal; font-weight: 900; border: 2px solid #000; line-height: 1; }
+.note { background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.note.warn { border-color: #C28A00; }
+
+/* Deslizador */
+.sl { display: flex; flex-direction: column; gap: 6px; }
+.sl .top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 800; }
+input[type="range"] { width: 100%; height: 48px; accent-color: var(--accent); margin: 0; }
+.hold { min-height: 72px; font-size: 19px; touch-action: none; -webkit-touch-callout: none; }
+.hold.on { background: var(--accent); color: var(--accent-ink); }
+
+/* Calibración */
+.gains { font: 600 17px/1.3 var(--mono); }
+.prev { max-width: 260px; width: 100%; border-radius: 12px; display: block; background: #000; }
+
+/* Ajustes */
+.card { background: var(--surface); border: 2px solid var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 12px; align-items: center; }
+.field label { font-weight: 700; }
+.field small { display: block; font-weight: 400; color: var(--ink2); font-size: 16px; }
+input[type="number"], select, input[type="text"] {
+  min-height: 52px; width: 100%; min-width: 0; border: 2px solid var(--line); border-radius: 12px; padding: 0 10px; background: var(--bg); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+input[type="color"] { width: 100%; height: 52px; border: 2px solid var(--line); border-radius: 12px; background: var(--bg); padding: 4px; }
+details { border: 2px solid var(--line); border-radius: 14px; background: var(--surface); }
+summary { min-height: 56px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; font-weight: 800; cursor: pointer; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary .dot { width: 28px; height: 28px; border-radius: 50%; flex: none; }
+.lvgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; padding: 4px 14px 14px; }
+.lvgrid label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: 16px; }
+.profrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.profrow .btn { min-height: 56px; flex: none; }
+
+/* Pestañas */
+#tabs { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px 0 8px; border-top: 2px solid var(--line); background: var(--bg); }
+#tabs button { min-height: 64px; border: 0; background: transparent; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-weight: 800; font-size: 16px; color: var(--ink2); min-width: 0; }
+#tabs button svg { width: 26px; height: 26px; }
+#tabs button[aria-selected="true"] { color: var(--accent-ink); background: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .lvl, .btn, #tabs button { transition: background-color .12s, border-color .12s; } }
+</style>
+</head>
+<body>
+<div id="main">
+
+  <!-- DÍA -->
+  <section class="view" id="v-dia">
+    <div class="head">
+      <span class="brand">AgroColor</span>
+      <h1>Requerimiento del Día</h1>
+      <p class="muted num" id="fecha"></p>
+    </div>
+    <div class="block">
+      <span class="label">Madurez que pide la bodega</span>
+      <div class="levels" id="levels"></div>
+      <p class="summary" id="resumen"></p>
+    </div>
+    <div class="block">
+      <span class="label">Luz de hoy</span>
+      <div class="seg" id="seg-perfil-dia" role="group" aria-label="Perfil de luz"></div>
+      <p class="muted" id="perfil-estado"></p>
+      <button class="btn" id="go-cal">Calibrar luz</button>
+    </div>
+    <button class="btn primary big" id="iniciar">Iniciar visión en campo</button>
+  </section>
+
+  <!-- CALIBRACIÓN -->
+  <section class="view" id="v-cal" hidden>
+    <div class="head">
+      <h1>Calibración</h1>
+      <p class="muted">Apunta el cuadro central a una hoja blanca o tarjeta gris, a 30 o 60 cm, y toca Calibrar.</p>
+    </div>
+    <div class="seg" id="seg-perfil-cal" role="group" aria-label="Perfil de luz"></div>
+    <div class="stage"><canvas id="ccv" width="480" height="360"></canvas><span class="pill warn" id="cal-pill" hidden><i></i><span></span></span></div>
+    <div class="row">
+      <button class="btn primary big" id="calibrar">Calibrar</button>
+      <button class="btn" id="cal-reset">Quitar calibración</button>
+    </div>
+    <p class="gains" id="gains"></p>
+    <div id="cal-prev-wrap" hidden class="block">
+      <span class="label">Vista previa del resultado</span>
+      <canvas id="pcv" class="prev" width="240" height="180"></canvas>
+    </div>
+    <div class="block" data-src>
+      <span class="label">Fuente de imagen</span>
+      <div class="row">
+        <button class="btn" data-act="cam">Cámara en vivo</button>
+        <label class="btn" for="inCam">Tomar foto</label>
+        <label class="btn" for="inGal">Galería</label>
+        <button class="btn" data-act="sample">Imagen de ejemplo</button>
+      </div>
+      <p class="muted" data-srcnote></p>
+    </div>
+  </section>
+
+  <!-- CAMPO -->
+  <section class="view" id="v-campo" hidden>
+    <div class="head">
+      <h1>Visión en Campo</h1>
+      <p class="muted" id="campo-sub"></p>
+    </div>
+    <div class="stage">
+      <canvas id="fcv" width="480" height="360"></canvas>
+      <span class="pill" id="alerts"><i></i><span>Sin alertas</span></span>
+      <span class="tag2" id="fps"></span>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="sl">
+      <div class="top"><label for="tol">Tolerancia</label><span class="num" id="tolv">50 de 100</span></div>
+      <input type="range" id="tol" min="0" max="100" step="1" value="50">
+      <p class="muted">Más alta acepta más variación de color. Más baja es más estricta.</p>
+    </div>
+    <div class="seg" id="seg-modo" role="group" aria-label="Modo del filtro">
+      <button type="button" data-mode="alerta" aria-pressed="true">Alerta</button>
+      <button type="button" data-mode="solo" aria-pressed="false">Solo requerido</button>
+    </div>
+    <button class="btn hold" id="hold">Mantener para ver el original</button>
+    <div class="row">
+      <span class="chip" id="chip-luz"></span>
+      <span class="chip tint" id="chip-src"></span>
+    </div>
+    <div class="block" data-src>
+      <span class="label">Fuente de imagen</span>
+      <div class="row">
+        <button class="btn" data-act="cam">Cámara en vivo</button>
+        <label class="btn" for="inCam">Tomar foto</label>
+        <label class="btn" for="inGal">Galería</label>
+        <button class="btn" data-act="sample">Imagen de ejemplo</button>
+      </div>
+      <p class="muted" data-srcnote></p>
+    </div>
+  </section>
+
+  <!-- AJUSTES -->
+  <section class="view" id="v-aj" hidden>
+    <div class="head"><h1>Ajustes</h1></div>
+    <div class="block">
+      <span class="label">Apariencia</span>
+      <div class="seg" id="seg-tema" role="group" aria-label="Tema">
+        <button type="button" data-theme-set="auto">Automático</button>
+        <button type="button" data-theme-set="light">Claro</button>
+        <button type="button" data-theme-set="dark">Oscuro</button>
+      </div>
+    </div>
+    <div class="block"><span class="label">Perfiles de luz</span><div id="perfiles" class="block"></div></div>
+    <div class="block">
+      <span class="label">Parámetros del filtro</span>
+      <div class="card" id="params"></div>
+    </div>
+    <div class="block">
+      <span class="label">Rangos de color por nivel (HSV)</span>
+      <p class="muted">H de 0 a 179, S y V de 0 a 255, como en OpenCV. El rojo cruza el 0, por eso tiene dos rangos de H.</p>
+      <div id="editor" class="block"></div>
+    </div>
+    <button class="btn" id="factory">Restaurar valores de fábrica</button>
+    <p class="muted" id="factory-msg" hidden>Se borran rangos, perfiles y calibraciones. Toca otra vez para confirmar.</p>
+  </section>
+</div>
+
+<nav id="tabs" role="tablist" aria-label="Secciones">
+  <button role="tab" data-go="dia" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 4.8M3.5 12l1.2 1.2L7 10.8M3.5 18l1.2 1.2L7 16.8"/></svg>Día</button>
+  <button role="tab" data-go="cal" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Calibrar</button>
+  <button role="tab" data-go="campo" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 012-2h2.5l1.5-2h6l1.5 2H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.8"/></svg>Campo</button>
+  <button role="tab" data-go="aj" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>Ajustes</button>
+</nav>
+
+<input type="file" id="inCam" accept="image/*" capture="environment" hidden>
+<input type="file" id="inGal" accept="image/*" hidden>
+<video id="vid" playsinline muted hidden></video>
+
+<script>
+/* AgroColor V1 - motor de visión (sin dependencias, funciona sin internet).
+   Convención OpenCV: H 0-179, S 0-255, V 0-255. La conversión vive solo aquí. */
+(function (root) {
+  'use strict';
+
+  var DEFAULT_SCALE = [
+    { nivel: 1, nombre: 'Verde puro', desc: 'Fruto totalmente verde', h: [[35, 85]], s_min: 60, v_min: 40, v_max: 255 },
+    { nivel: 2, nombre: 'Pinto', desc: 'Primeros toques de color, amarillo verdoso', h: [[22, 34]], s_min: 60, v_min: 80, v_max: 255 },
+    { nivel: 3, nombre: 'Intermedia', desc: 'Color avanzado, anaranjado o rosado, aún no rojo', h: [[8, 21]], s_min: 90, v_min: 80, v_max: 255 },
+    { nivel: 4, nombre: 'Completa', desc: 'Rojo óptimo', h: [[0, 7], [172, 179]], s_min: 120, v_min: 90, v_max: 255 },
+    { nivel: 5, nombre: 'Rojo total', desc: 'Rojo muy intenso u oscuro', h: [[0, 7], [172, 179]], s_min: 150, v_min: 40, v_max: 89 }
+  ];
+
+  var DEFAULT_PARAMS = { areaMinPct: 0.3, circMin: 0.6, kernel: 5, res: 480, clusterPct: 2.5 };
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function rgbToHsv(r, g, b) {
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
+    if (d > 0) {
+      if (mx === r) h = 60 * (((g - b) / d) % 6);
+      else if (mx === g) h = 60 * ((b - r) / d + 2);
+      else h = 60 * ((r - g) / d + 4);
+      if (h < 0) h += 360;
+    }
+    return [Math.round(h / 2) % 180, mx === 0 ? 0 : Math.round(255 * d / mx), mx];
+  }
+
+  function hsvToRgb(H, S, V) {
+    var h = (H * 2) / 60, s = S / 255, v = V / 255;
+    var c = v * s, x = c * (1 - Math.abs((h % 2) - 1)), m = v - c, r = 0, g = 0, b = 0;
+    if (h < 1) { r = c; g = x; } else if (h < 2) { r = x; g = c; } else if (h < 3) { g = c; b = x; }
+    else if (h < 4) { g = x; b = c; } else if (h < 5) { r = x; b = c; } else { r = c; b = x; }
+    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+  }
+
+  /* ---- Tablas de rangos con tolerancia ----
+     tol 50 = rangos nominales; hacia 100 se ensanchan (H hasta +-6, S/V mín hasta 40 menos);
+     hacia 0 se estrechan en la misma proporción. */
+  function makeSet(scale, t) {
+    var hT = new Uint8Array(5 * 180), smin = [], vmin = [], vmax = [];
+    var dh = Math.round(6 * t), ds = Math.round(40 * t);
+    for (var l = 0; l < 5; l++) {
+      var L = scale[l];
+      for (var k = 0; k < L.h.length; k++) {
+        var a = L.h[k][0], b = L.h[k][1];
+        var lo = a - dh, hi = b + dh;
+        if (hi < lo) { lo = hi = Math.round((a + b) / 2); }
+        if (hi - lo >= 179) { for (var x0 = 0; x0 < 180; x0++) hT[l * 180 + x0] = 1; }
+        else { for (var x = lo; x <= hi; x++) hT[l * 180 + (((x % 180) + 180) % 180)] = 1; }
+      }
+      smin[l] = Math.min(255, Math.max(0, L.s_min - ds));
+      vmin[l] = Math.min(255, Math.max(0, L.v_min - ds));
+      vmax[l] = L.v_max;
+    }
+    return { h: hT, smin: smin, vmin: vmin, vmax: vmax };
+  }
+
+  function buildTables(scale, tol) {
+    var t = (tol - 50) / 50;
+    if (t <= 0) return { sets: [makeSet(scale, t)] };
+    return { sets: [makeSet(scale, 0), makeSet(scale, t)] };
+  }
+
+  /* ---- Calibración de balance de blancos ---- */
+  function computeGains(rgba, w, h, boxPx) {
+    var side = Math.max(4, Math.round(boxPx)), half = side >> 1;
+    var cx = w >> 1, cy = h >> 1, x0 = Math.max(0, cx - half), y0 = Math.max(0, cy - half);
+    var x1 = Math.min(w, x0 + side), y1 = Math.min(h, y0 + side);
+    var sr = 0, sg = 0, sb = 0, n = 0;
+    for (var y = y0; y < y1; y++) for (var x = x0; x < x1; x++) {
+      var j = (y * w + x) * 4; sr += rgba[j]; sg += rgba[j + 1]; sb += rgba[j + 2]; n++;
+    }
+    if (!n) return [1, 1, 1];
+    var mr = sr / n, mg = sg / n, mb = sb / n, avg = (mr + mg + mb) / 3;
+    function g(m) { return m < 1 ? 1 : Math.min(3, Math.max(0.33, avg / m)); }
+    return [g(mr), g(mg), g(mb)];
+  }
+
+  /* ---- Espacio de trabajo reutilizable ---- */
+  function makeWorkspace(w, h) {
+    var n = w * h;
+    return {
+      w: w, h: h, n: n,
+      rgbA: new Uint8Array(n * 3), rgbB: new Uint8Array(n * 3),
+      cls: new Uint8Array(n),
+      m: [new Uint8Array(n), new Uint8Array(n), new Uint8Array(n)],
+      k: [new Uint8Array(n), new Uint8Array(n), new Uint8Array(n)],
+      s1: new Uint8Array(n), s2: new Uint8Array(n),
+      cU: new Uint8Array(n), cO: new Uint8Array(n),
+      vis: new Uint8Array(n), queue: new Int32Array(n), col: new Int16Array(w)
+    };
+  }
+
+  /* Ganancias por canal + desenfoque gaussiano 5x5 (separable 1-4-6-4-1). */
+  function preprocess(ws, src, gains) {
+    var w = ws.w, h = ws.h, n = ws.n, A = ws.rgbA, B = ws.rgbB;
+    var gr = gains[0], gg = gains[1], gb = gains[2];
+    var i, j, k, r, g, b;
+    for (i = 0, j = 0, k = 0; i < n; i++, j += 4, k += 3) {
+      r = src[j] * gr; g = src[j + 1] * gg; b = src[j + 2] * gb;
+      A[k] = r > 255 ? 255 : r; A[k + 1] = g > 255 ? 255 : g; A[k + 2] = b > 255 ? 255 : b;
+    }
+    var x, y, row, o, x0, x1, x3, x4, a0, a1, a3, a4;
+    for (y = 0; y < h; y++) {
+      row = y * w * 3;
+      for (x = 0; x < w; x++) {
+        x0 = x < 2 ? 0 : x - 2; x1 = x < 1 ? 0 : x - 1; x3 = x > w - 2 ? w - 1 : x + 1; x4 = x > w - 3 ? w - 1 : x + 2;
+        o = row + x * 3; a0 = row + x0 * 3; a1 = row + x1 * 3; a3 = row + x3 * 3; a4 = row + x4 * 3;
+        B[o] = (A[a0] + 4 * A[a1] + 6 * A[o] + 4 * A[a3] + A[a4]) >> 4;
+        B[o + 1] = (A[a0 + 1] + 4 * A[a1 + 1] + 6 * A[o + 1] + 4 * A[a3 + 1] + A[a4 + 1]) >> 4;
+        B[o + 2] = (A[a0 + 2] + 4 * A[a1 + 2] + 6 * A[o + 2] + 4 * A[a3 + 2] + A[a4 + 2]) >> 4;
+      }
+    }
+    var stride = w * 3, y0, y1, y3, y4, r0, r1, r3, r4;
+    for (y = 0; y < h; y++) {
+      y0 = y < 2 ? 0 : y - 2; y1 = y < 1 ? 0 : y - 1; y3 = y > h - 2 ? h - 1 : y + 1; y4 = y > h - 3 ? h - 1 : y + 2;
+      o = y * stride; r0 = y0 * stride; r1 = y1 * stride; r3 = y3 * stride; r4 = y4 * stride;
+      for (k = 0; k < stride; k++) {
+        A[o + k] = (B[r0 + k] + 4 * B[r1 + k] + 6 * B[o + k] + 4 * B[r3 + k] + B[r4 + k]) >> 4;
+      }
+    }
+  }
+
+  /* cls: 0 sin nivel, 1 en rango, 2 bajo rango (más verde), 3 sobre rango (más maduro) */
+  function classify(ws, tables, lo, hi) {
+    var n = ws.n, A = ws.rgbA, cls = ws.cls, sets = tables.sets, ns = sets.length;
+    for (var i = 0, k = 0; i < n; i++, k += 3) {
+      var r = A[k], g = A[k + 1], b = A[k + 2];
+      var mx = r, mn = r;
+      if (g > mx) mx = g; if (b > mx) mx = b; if (g < mn) mn = g; if (b < mn) mn = b;
+      var d = mx - mn;
+      if (d === 0 || mx === 0) { cls[i] = 0; continue; }
+      var hh;
+      if (mx === r) { hh = 60 * (g - b) / d; if (hh < 0) hh += 360; }
+      else if (mx === g) hh = 60 * ((b - r) / d + 2);
+      else hh = 60 * ((r - g) / d + 4);
+      var H = ((hh / 2) | 0) % 180, S = (255 * d / mx) | 0, V = mx, lvl = 0;
+      for (var si = 0; si < ns && !lvl; si++) {
+        var t = sets[si];
+        for (var l = 0; l < 5; l++) {
+          if (t.h[l * 180 + H] && S >= t.smin[l] && V >= t.vmin[l] && V <= t.vmax[l]) { lvl = l + 1; break; }
+        }
+      }
+      cls[i] = lvl === 0 ? 0 : (lvl < lo ? 2 : (lvl > hi ? 3 : 1));
+    }
+  }
+
+  /* ---- Morfología rectangular con sumas deslizantes ---- */
+  function passH(src, dst, w, h, r, dil) {
+    var need = 2 * r + 1;
+    for (var y = 0; y < h; y++) {
+      var o = y * w, sum = 0, lim = Math.min(r, w - 1);
+      for (var k = 0; k <= lim; k++) sum += src[o + k];
+      for (var x = 0; x < w; x++) {
+        dst[o + x] = dil ? (sum > 0 ? 1 : 0) : (sum === need ? 1 : 0);
+        var a = x + r + 1; if (a < w) sum += src[o + a];
+        var rm = x - r; if (rm >= 0) sum -= src[o + rm];
+      }
+    }
+  }
+  function passV(src, dst, w, h, r, dil, col) {
+    var need = 2 * r + 1, x, y, o;
+    col.fill(0);
+    var lim = Math.min(r, h - 1);
+    for (y = 0; y <= lim; y++) { o = y * w; for (x = 0; x < w; x++) col[x] += src[o + x]; }
+    for (y = 0; y < h; y++) {
+      o = y * w;
+      for (x = 0; x < w; x++) { var c = col[x]; dst[o + x] = dil ? (c > 0 ? 1 : 0) : (c === need ? 1 : 0); }
+      var a = y + r + 1;
+      if (a < h) { var oa = a * w; for (x = 0; x < w; x++) col[x] += src[oa + x]; }
+      var rm = y - r;
+      if (rm >= 0) { var orm = rm * w; for (x = 0; x < w; x++) col[x] -= src[orm + x]; }
+    }
+  }
+  function erode(ws, src, dst, r) {
+    passH(src, ws.s1, ws.w, ws.h, r, false); passV(ws.s1, dst, ws.w, ws.h, r, false, ws.col);
+  }
+  /* apertura y cierre; el resultado queda en m */
+  function openClose(ws, m, r) {
+    var w = ws.w, h = ws.h, s1 = ws.s1, s2 = ws.s2, col = ws.col;
+    passH(m, s1, w, h, r, false); passV(s1, s2, w, h, r, false, col);
+    passH(s2, s1, w, h, r, true); passV(s1, m, w, h, r, true, col);
+    passH(m, s1, w, h, r, true); passV(s1, s2, w, h, r, true, col);
+    passH(s2, s1, w, h, r, false); passV(s1, m, w, h, r, false, col);
+  }
+
+  /* ---- Manchas: área mínima y circularidad ----
+     Perímetro estimado = (aristas de píxel) * pi/4, así un círculo da circularidad ~1.
+     Manchas grandes (racimos de frutos juntos) no pasan por el filtro de forma. */
+  function components(ws, mask, keep, minArea, minCirc, clusterArea, blobs, kind) {
+    var w = ws.w, h = ws.h, n = ws.n, vis = ws.vis, q = ws.queue, tail = 0;
+    vis.fill(0); keep.fill(0);
+    for (var s = 0; s < n; s++) {
+      if (!mask[s] || vis[s]) continue;
+      var start = tail, head = start, sx = 0, sy = 0, edges = 0;
+      q[tail++] = s; vis[s] = 1;
+      while (head < tail) {
+        var p = q[head++], y = (p / w) | 0, x = p - y * w, t;
+        sx += x; sy += y;
+        if (x > 0) { t = p - 1; if (mask[t]) { if (!vis[t]) { vis[t] = 1; q[tail++] = t; } } else edges++; }
+        if (x < w - 1) { t = p + 1; if (mask[t]) { if (!vis[t]) { vis[t] = 1; q[tail++] = t; } } else edges++; }
+        if (y > 0) { t = p - w; if (mask[t]) { if (!vis[t]) { vis[t] = 1; q[tail++] = t; } } else edges++; }
+        if (y < h - 1) { t = p + w; if (mask[t]) { if (!vis[t]) { vis[t] = 1; q[tail++] = t; } } else edges++; }
+      }
+      var area = tail - start;
+      if (area < minArea) continue;
+      var circ = edges > 0 ? Math.min(1, 64 * area / (Math.PI * edges * edges)) : 1;
+      if (area < clusterArea && circ < minCirc) continue;
+      for (var i = start; i < tail; i++) keep[q[i]] = 1;
+      blobs.push({ kind: kind, x: sx / area, y: sy / area, area: area, circ: circ });
+    }
+  }
+
+  /* ---- Dibujo ---- */
+  function render(ws, src, mode, colors, out, thick) {
+    var n = ws.n, kIn = ws.k[0], kU = ws.k[1], kO = ws.k[2], cU = ws.cU, cO = ws.cO;
+    var alerta = mode === 'alerta';
+    var i, j;
+    if (alerta) {
+      erode(ws, kU, ws.s2, thick); for (i = 0; i < n; i++) cU[i] = kU[i] && !ws.s2[i] ? 1 : 0;
+      erode(ws, kO, ws.s2, thick); for (i = 0; i < n; i++) cO[i] = kO[i] && !ws.s2[i] ? 1 : 0;
+    }
+    var u = colors.under, o = colors.over;
+    for (i = 0, j = 0; i < n; i++, j += 4) {
+      var r = src[j], g = src[j + 1], b = src[j + 2];
+      var R, G, B;
+      if (kIn[i]) { R = r; G = g; B = b; }
+      else { R = G = B = (r * 77 + g * 151 + b * 28) >> 8; }
+      if (alerta) {
+        if (kU[i]) {
+          if (cU[i]) { R = u[0]; G = u[1]; B = u[2]; }
+          else { R = r * 0.45 + u[0] * 0.55; G = g * 0.45 + u[1] * 0.55; B = b * 0.45 + u[2] * 0.55; }
+        }
+        if (kO[i]) {
+          if (cO[i]) { R = o[0]; G = o[1]; B = o[2]; }
+          else { R = r * 0.45 + o[0] * 0.55; G = g * 0.45 + o[1] * 0.55; B = b * 0.45 + o[2] * 0.55; }
+        }
+      }
+      out[j] = R; out[j + 1] = G; out[j + 2] = B; out[j + 3] = 255;
+    }
+  }
+
+  /* Procesa un cuadro completo. opts: gains, req [lo,hi], tol, scale, mode, params, colors, out (RGBA) */
+  function processFrame(ws, src, opts) {
+    var n = ws.n, w = ws.w, h = ws.h, p = opts.params, r = (p.kernel - 1) >> 1;
+    preprocess(ws, src, opts.gains);
+    classify(ws, buildTables(opts.scale, opts.tol), opts.req[0], opts.req[1]);
+    var cls = ws.cls, m = ws.m, any = [0, 0, 0], i;
+    for (i = 0; i < n; i++) {
+      var c = cls[i];
+      m[0][i] = c === 1 ? 1 : 0; m[1][i] = c === 2 ? 1 : 0; m[2][i] = c === 3 ? 1 : 0;
+      if (c) any[c - 1] = 1;
+    }
+    var minArea = Math.max(4, p.areaMinPct / 100 * n), cluster = p.clusterPct / 100 * n;
+    var blobs = [], kinds = ['in', 'under', 'over'];
+    for (var t = 0; t < 3; t++) {
+      if (!any[t]) { ws.k[t].fill(0); continue; }
+      openClose(ws, m[t], r);
+      components(ws, m[t], ws.k[t], minArea, p.circMin, cluster, blobs, kinds[t]);
+    }
+    render(ws, src, opts.mode, opts.colors, opts.out, Math.max(1, Math.round(w / 240)));
+    var nu = 0, no = 0;
+    for (i = 0; i < blobs.length; i++) { if (blobs[i].kind === 'under') nu++; else if (blobs[i].kind === 'over') no++; }
+    return { blobs: blobs, under: nu, over: no };
+  }
+
+  /* ---- Escena de ejemplo (contenedor con tomates y tarjeta gris) ---- */
+  function makeSample(w, h) {
+    var d = new Uint8ClampedArray(w * h * 4), seed = 7;
+    function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    var i, j;
+    for (i = 0, j = 0; i < w * h; i++, j += 4) {
+      var nz = (rnd() - 0.5) * 8;
+      d[j] = 52 + nz; d[j + 1] = 46 + nz; d[j + 2] = 38 + nz; d[j + 3] = 255;
+    }
+    var lv = [[45, 170, 150], [28, 190, 200], [14, 200, 215], [3, 220, 205], [178, 210, 80]];
+    var plan = [3, 3, 2, 3, 3, 1, 3, 3, 2, 3, 3, 4, 3, 5, 3];
+    var cols = 5, rows = 3, mx = Math.max(w, h), R = mx * 0.062;
+    var gx0 = w * 0.1, gx1 = w * 0.9, gy0 = h * 0.1, gy1 = h * 0.74;
+    for (var f = 0; f < plan.length; f++) {
+      var ci = f % cols, ri = (f / cols) | 0;
+      var cx = gx0 + (gx1 - gx0) * (ci + 0.5) / cols + (rnd() - 0.5) * R * 0.2;
+      var cy = gy0 + (gy1 - gy0) * (ri + 0.5) / rows + (rnd() - 0.5) * R * 0.2;
+      var base = lv[plan[f] - 1];
+      var x0 = Math.max(0, Math.floor(cx - R - 1)), x1 = Math.min(w - 1, Math.ceil(cx + R + 1));
+      var y0 = Math.max(0, Math.floor(cy - R - 1)), y1 = Math.min(h - 1, Math.ceil(cy + R + 1));
+      for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+        var dx = x - cx, dy = (y - cy) * 1.0, dd = Math.sqrt(dx * dx + dy * dy) / R;
+        if (dd > 1) continue;
+        var shade = 1.05 - 0.2 * dd * dd;
+        var Sx = base[1], Vx = base[2] * shade;
+        var sx = dx + R * 0.32, sy = dy + R * 0.36;
+        if (Math.sqrt(sx * sx + sy * sy) < R * 0.16) { Sx = Sx * 0.3; Vx = Math.min(255, Vx * 1.15); }
+        var rgb = hsvToRgb(base[0], Sx, Vx), q = (y * w + x) * 4, nz2 = (rnd() - 0.5) * 8;
+        d[q] = rgb[0] + nz2; d[q + 1] = rgb[1] + nz2; d[q + 2] = rgb[2] + nz2;
+      }
+    }
+    var cw = Math.round(w * 0.14), ch = Math.round(h * 0.14), cx0 = Math.round(w * 0.43), cy0 = Math.round(h * 0.82);
+    for (var yy = cy0; yy < Math.min(h, cy0 + ch); yy++) for (var xx = cx0; xx < Math.min(w, cx0 + cw); xx++) {
+      var qq = (yy * w + xx) * 4, nz3 = (rnd() - 0.5) * 6;
+      d[qq] = 176 + nz3; d[qq + 1] = 176 + nz3; d[qq + 2] = 176 + nz3;
+    }
+    return d;
+  }
+
+  var api = {
+    DEFAULT_SCALE: DEFAULT_SCALE, DEFAULT_PARAMS: DEFAULT_PARAMS, clone: clone,
+    rgbToHsv: rgbToHsv, hsvToRgb: hsvToRgb, buildTables: buildTables, computeGains: computeGains,
+    makeWorkspace: makeWorkspace, processFrame: processFrame, makeSample: makeSample,
+    _internals: { classify: classify, preprocess: preprocess, openClose: openClose, components: components }
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.AgroCore = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var C = window.AgroCore;
+  function $(id) { return document.getElementById(id); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+
+  /* ---------- Estado y almacenamiento local ---------- */
+  var KEY = 'agrocolor.v1';
+  var PERFILES = [{ id: 'sol', nombre: 'Sol' }, { id: 'sombra', nombre: 'Sombra' }, { id: 'nublado', nombre: 'Nublado' }];
+  var SW = [['#7BB33A', '#000'], ['#D8CC3C', '#000'], ['#F0902E', '#000'], ['#D8281E', '#fff'], ['#7C1520', '#fff']];
+
+  function defaults() {
+    var p = {};
+    PERFILES.forEach(function (x) { p[x.id] = { gains: [1, 1, 1], tol: 50, cal: false }; });
+    return { scale: C.clone(C.DEFAULT_SCALE), profiles: p, perfil: 'sol', req: [2, 3], mode: 'alerta',
+      params: C.clone(C.DEFAULT_PARAMS), colors: { under: '#39FF14', over: '#FF00FF' }, theme: 'auto' };
+  }
+  function restore() {
+    var d = defaults();
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY));
+      if (s && typeof s === 'object') {
+        if (Array.isArray(s.scale) && s.scale.length === 5) d.scale = s.scale;
+        if (s.profiles) PERFILES.forEach(function (x) { if (s.profiles[x.id] && Array.isArray(s.profiles[x.id].gains)) d.profiles[x.id] = s.profiles[x.id]; });
+        if (s.perfil && d.profiles[s.perfil]) d.perfil = s.perfil;
+        if (Array.isArray(s.req) && s.req[0] >= 1 && s.req[1] <= 5 && s.req[0] <= s.req[1]) d.req = s.req;
+        if (s.mode === 'alerta' || s.mode === 'solo') d.mode = s.mode;
+        if (s.params) Object.keys(d.params).forEach(function (k) { if (typeof s.params[k] === 'number') d.params[k] = s.params[k]; });
+        if (s.colors && s.colors.under && s.colors.over) d.colors = s.colors;
+        if (s.theme) d.theme = s.theme;
+      }
+    } catch (e) {}
+    return d;
+  }
+  var S = restore();
+  var saveT = 0;
+  function save() { clearTimeout(saveT); saveT = setTimeout(function () { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }, 150); }
+  function hex(h) { var n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  function prof() { return S.profiles[S.perfil]; }
+  function perfilNombre(id) { return PERFILES.filter(function (x) { return x.id === id; })[0].nombre; }
+
+  /* ---------- Navegación ---------- */
+  var view = 'dia', dirty = true;
+  function go(name) {
+    view = name;
+    ['dia', 'cal', 'campo', 'aj'].forEach(function (v) { $('v-' + v).hidden = v !== name; });
+    $$('#tabs button').forEach(function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-go') === name)); });
+    $('main').scrollTop = 0;
+    dirty = true;
+    if (name === 'campo' || name === 'cal') wake(true); else wake(false);
+    refresh();
+  }
+  $$('#tabs button').forEach(function (b) { b.addEventListener('click', function () { go(b.getAttribute('data-go')); }); });
+  $('go-cal').addEventListener('click', function () { go('cal'); });
+  $('iniciar').addEventListener('click', function () { go('campo'); });
+
+  var lock = null;
+  function wake(on) {
+    try {
+      if (on && navigator.wakeLock && !lock && !document.hidden) {
+        navigator.wakeLock.request('screen').then(function (l) { lock = l; l.addEventListener('release', function () { lock = null; }); }).catch(function () {});
+      } else if (!on && lock) { lock.release(); lock = null; }
+    } catch (e) {}
+  }
+
+  /* ---------- Pantalla Día ---------- */
+  function tapLevel(n) {
+    var a = S.req[0], b = S.req[1];
+    if (n >= a && n <= b) {
+      if (a === b) return;
+      if (n === a) a++; else if (n === b) b--; else { a = n; b = n; }
+    } else if (n === a - 1) a = n;
+    else if (n === b + 1) b = n;
+    else { a = n; b = n; }
+    S.req = [a, b]; save(); dirty = true; refresh();
+  }
+  function renderLevels() {
+    var h = '';
+    S.scale.forEach(function (L, i) {
+      var sel = L.nivel >= S.req[0] && L.nivel <= S.req[1];
+      h += '<button type="button" class="lvl" data-n="' + L.nivel + '" aria-pressed="' + sel + '">' +
+        '<span class="sw" style="background:' + SW[i][0] + ';color:' + SW[i][1] + '">' + L.nivel + '</span>' +
+        '<span class="t"><b>' + L.nombre + '</b><span>' + (L.desc || '') + '</span></span>' +
+        '<span class="tag">' + (sel ? 'Pido' : '') + '</span></button>';
+    });
+    $('levels').innerHTML = h;
+    $$('#levels .lvl').forEach(function (b) { b.addEventListener('click', function () { tapLevel(+b.getAttribute('data-n')); }); });
+  }
+  function reqTexto() {
+    var a = S.req[0], b = S.req[1], A = S.scale[a - 1].nombre, B = S.scale[b - 1].nombre;
+    return a === b ? 'Nivel ' + a + ' · ' + A : 'Niveles ' + a + ' a ' + b + ' · ' + A + ' a ' + B;
+  }
+  function renderSeg(id) {
+    var h = '';
+    PERFILES.forEach(function (p) { h += '<button type="button" data-p="' + p.id + '" aria-pressed="' + (S.perfil === p.id) + '">' + p.nombre + '</button>'; });
+    var el = $(id); el.innerHTML = h;
+    $$('button', el).forEach(function (b) { b.addEventListener('click', function () { S.perfil = b.getAttribute('data-p'); save(); dirty = true; refresh(); }); });
+  }
+  function gainsTxt(g) { return 'R ×' + g[0].toFixed(2) + '   G ×' + g[1].toFixed(2) + '   B ×' + g[2].toFixed(2); }
+
+  /* ---------- Fuente de imagen ---------- */
+  var vid = $('vid'), SRC = { mode: 'sample', stream: null, still: null, msg: '' };
+  var gcv = document.createElement('canvas'), gctx = gcv.getContext('2d', { willReadFrequently: true });
+  var sampleCache = null;
+  function dims(sw, sh, max) { var k = max / Math.max(sw, sh); return [Math.max(8, Math.round(sw * k)), Math.max(8, Math.round(sh * k))]; }
+  function sizeCv(cv, w, h) { if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } }
+  function grab() {
+    var max = S.params.res, d, w, h;
+    if (SRC.mode === 'live') {
+      if (vid.readyState < 2 || !vid.videoWidth) return null;
+      d = dims(vid.videoWidth, vid.videoHeight, max); w = d[0]; h = d[1];
+      sizeCv(gcv, w, h); gctx.drawImage(vid, 0, 0, w, h);
+    } else if (SRC.mode === 'photo') {
+      d = dims(SRC.still.width, SRC.still.height, max); w = d[0]; h = d[1];
+      sizeCv(gcv, w, h); gctx.drawImage(SRC.still, 0, 0, w, h);
+    } else {
+      w = max; h = Math.round(max * 0.75);
+      if (!sampleCache || sampleCache.w !== w) sampleCache = { w: w, h: h, data: C.makeSample(w, h) };
+      return sampleCache;
+    }
+    return { w: w, h: h, data: gctx.getImageData(0, 0, w, h).data };
+  }
+  function stopCam() {
+    if (SRC.stream) { SRC.stream.getTracks().forEach(function (t) { t.stop(); }); SRC.stream = null; }
+    vid.srcObject = null; camLocked = false;
+  }
+  var camLocked = false;
+  function lockCam(on) {
+    camLocked = false;
+    if (!SRC.stream) return;
+    try {
+      var tr = SRC.stream.getVideoTracks()[0];
+      if (!tr || !tr.getCapabilities) return;
+      var caps = tr.getCapabilities(), st = tr.getSettings(), adv = {};
+      if (on) {
+        if (caps.whiteBalanceMode && caps.whiteBalanceMode.indexOf('manual') >= 0) { adv.whiteBalanceMode = 'manual'; if (st.colorTemperature) adv.colorTemperature = st.colorTemperature; }
+        if (caps.exposureMode && caps.exposureMode.indexOf('manual') >= 0) { adv.exposureMode = 'manual'; if (st.exposureTime) adv.exposureTime = st.exposureTime; }
+      } else {
+        if (caps.whiteBalanceMode && caps.whiteBalanceMode.indexOf('continuous') >= 0) adv.whiteBalanceMode = 'continuous';
+        if (caps.exposureMode && caps.exposureMode.indexOf('continuous') >= 0) adv.exposureMode = 'continuous';
+      }
+      if (!Object.keys(adv).length) return;
+      tr.applyConstraints({ advanced: [adv] }).then(function () { camLocked = on; refresh(); }).catch(function () {});
+    } catch (e) {}
+  }
+  function startCam() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { SRC.msg = 'Esta vista no permite la cámara en vivo. Usa Tomar foto o Galería: el filtro se aplica igual a cada foto.'; refresh(); return; }
+    SRC.msg = 'Abriendo cámara…'; refresh();
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      .then(function (st) {
+        stopCam(); SRC.stream = st; vid.srcObject = st;
+        return vid.play().then(function () { SRC.mode = 'live'; SRC.msg = ''; dirty = true; if (prof().cal) lockCam(true); refresh(); });
+      })
+      .catch(function () { SRC.msg = 'No se pudo abrir la cámara en vivo en esta vista. Usa Tomar foto o Galería: el filtro se aplica igual a cada foto.'; refresh(); });
+  }
+  function loadFile(f) {
+    function done(src) {
+      var k = Math.min(1, 1280 / Math.max(src.width, src.height)), c = document.createElement('canvas');
+      c.width = Math.round(src.width * k); c.height = Math.round(src.height * k);
+      c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+      stopCam(); SRC.still = c; SRC.mode = 'photo'; SRC.msg = ''; dirty = true; refresh();
+    }
+    function fail() { SRC.msg = 'No se pudo leer esa imagen. Prueba con otra foto.'; refresh(); }
+    if (window.createImageBitmap) { createImageBitmap(f).then(done).catch(fail); }
+    else {
+      var u = URL.createObjectURL(f), im = new Image();
+      im.onload = function () { done(im); URL.revokeObjectURL(u); }; im.onerror = fail; im.src = u;
+    }
+  }
+  $('inCam').addEventListener('change', function (e) { if (e.target.files[0]) loadFile(e.target.files[0]); e.target.value = ''; });
+  $('inGal').addEventListener('change', function (e) { if (e.target.files[0]) loadFile(e.target.files[0]); e.target.value = ''; });
+  $$('[data-act]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.getAttribute('data-act') === 'cam') startCam();
+      else { stopCam(); SRC.mode = 'sample'; SRC.msg = ''; dirty = true; refresh(); }
+    });
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { if (SRC.mode === 'live') { stopCam(); SRC.mode = 'sample'; SRC.msg = 'La cámara se apagó al salir de la app. Toca Cámara en vivo para volver a usarla.'; } wake(false); }
+    else if (view === 'campo' || view === 'cal') wake(true);
+    dirty = true; refresh();
+  });
+  function srcLabel() { return SRC.mode === 'live' ? 'Cámara en vivo' : (SRC.mode === 'photo' ? 'Foto' : 'Imagen de ejemplo'); }
+  function srcNote() {
+    if (SRC.msg) return SRC.msg;
+    if (SRC.mode === 'sample') return 'Estás viendo una imagen de ejemplo. Abre la cámara o toma una foto de un contenedor real.';
+    if (SRC.mode === 'photo') return 'Estás viendo una foto. Toca Tomar foto para escanear otro contenedor.';
+    return camLocked ? 'Exposición y balance de blancos bloqueados.' : 'Cámara en vivo. Si cambia la luz, vuelve a calibrar.';
+  }
+
+  /* ---------- Procesamiento ---------- */
+  var WS = null, OUT = null, fcv = $('fcv'), fctx = fcv.getContext('2d'), ccv = $('ccv'), cctx = ccv.getContext('2d');
+  var pcv = $('pcv'), pctx = pcv.getContext('2d');
+  var holdOrig = false, lastRaw = null, lastAlert = '', fpsMs = 0, lastT = 0;
+  function ensure(w, h) {
+    if (!WS || WS.w !== w || WS.h !== h) { WS = C.makeWorkspace(w, h); OUT = new ImageData(w, h); }
+  }
+  function drawField() {
+    var f = grab(); if (!f) return;
+    ensure(f.w, f.h); sizeCv(fcv, f.w, f.h);
+    var now = performance.now();
+    if (SRC.mode === 'live') { var dt = now - lastT; fpsMs = fpsMs ? fpsMs * 0.9 + dt * 0.1 : dt; }
+    lastT = now;
+    if (holdOrig) {
+      OUT.data.set(f.data); fctx.putImageData(OUT, 0, 0); setAlert(null); return;
+    }
+    var p = prof();
+    var r = C.processFrame(WS, f.data, { gains: p.gains, req: S.req, tol: p.tol, scale: S.scale, mode: S.mode, params: S.params, colors: { under: hex(S.colors.under), over: hex(S.colors.over) }, out: OUT.data });
+    fctx.putImageData(OUT, 0, 0);
+    if (S.mode === 'alerta') drawBadges(r.blobs, f.w, f.h);
+    setAlert(S.mode === 'alerta' ? r : { solo: true });
+  }
+  function drawBadges(blobs, w, h) {
+    var rb = Math.max(10, Math.round(Math.max(w, h) * 0.032));
+    fctx.lineWidth = Math.max(2, rb / 5); fctx.textAlign = 'center'; fctx.textBaseline = 'middle';
+    fctx.font = '900 ' + Math.round(rb * 1.5) + 'px system-ui, sans-serif';
+    blobs.forEach(function (b) {
+      if (b.kind === 'in') return;
+      var u = b.kind === 'under';
+      fctx.beginPath(); fctx.arc(b.x, b.y, rb, 0, 6.2832);
+      fctx.fillStyle = u ? S.colors.under : S.colors.over; fctx.fill();
+      fctx.strokeStyle = '#000'; fctx.stroke();
+      fctx.fillStyle = '#000'; fctx.fillText(u ? '−' : '+', b.x, b.y + 1);
+    });
+  }
+  function setAlert(r) {
+    var el = $('alerts'), txt, warn = false;
+    if (r === null) txt = 'Imagen original';
+    else if (r.solo) txt = 'Solo lo requerido';
+    else { var n = r.under + r.over; warn = n > 0; txt = n === 0 ? 'Sin alertas ✓' : (n === 1 ? '1 alerta' : n + ' alertas'); }
+    if (txt !== lastAlert) { lastAlert = txt; el.lastChild.textContent = txt; el.classList.toggle('warn', warn); }
+    $('fps').textContent = SRC.mode === 'live' && fpsMs ? Math.round(1000 / fpsMs) + ' fps' : '';
+  }
+  function drawCal() {
+    var f = grab(); if (!f) return;
+    sizeCv(ccv, f.w, f.h);
+    var img = new ImageData(new Uint8ClampedArray(f.data), f.w, f.h);
+    cctx.putImageData(img, 0, 0);
+    lastRaw = f;
+    var side = Math.round(100 * Math.max(f.w, f.h) / 640), x = (f.w - side) >> 1, y = (f.h - side) >> 1;
+    cctx.lineWidth = 4; cctx.strokeStyle = '#000'; cctx.strokeRect(x - 2, y - 2, side + 4, side + 4);
+    cctx.lineWidth = 2; cctx.strokeStyle = '#fff'; cctx.strokeRect(x, y, side, side);
+    cctx.beginPath(); cctx.moveTo(f.w / 2 - 6, f.h / 2); cctx.lineTo(f.w / 2 + 6, f.h / 2); cctx.moveTo(f.w / 2, f.h / 2 - 6); cctx.lineTo(f.w / 2, f.h / 2 + 6); cctx.stroke();
+  }
+  function drawPreview() {
+    if (!lastRaw) return;
+    var f = lastRaw, g = prof().gains, d = new Uint8ClampedArray(f.data.length);
+    for (var i = 0; i < d.length; i += 4) { d[i] = f.data[i] * g[0]; d[i + 1] = f.data[i + 1] * g[1]; d[i + 2] = f.data[i + 2] * g[2]; d[i + 3] = 255; }
+    sizeCv(pcv, f.w, f.h); pctx.putImageData(new ImageData(d, f.w, f.h), 0, 0);
+    $('cal-prev-wrap').hidden = false;
+  }
+  $('calibrar').addEventListener('click', function () {
+    if (!lastRaw || SRC.mode === 'sample') return;
+    var p = prof();
+    p.gains = C.computeGains(lastRaw.data, lastRaw.w, lastRaw.h, 100 * Math.max(lastRaw.w, lastRaw.h) / 640);
+    p.cal = true; save(); drawPreview(); lockCam(true); dirty = true; refresh();
+  });
+  $('cal-reset').addEventListener('click', function () {
+    var p = prof(); p.gains = [1, 1, 1]; p.cal = false; save(); lockCam(false); $('cal-prev-wrap').hidden = true; dirty = true; refresh();
+  });
+
+  /* ---------- Campo: controles ---------- */
+  $('tol').addEventListener('input', function (e) { prof().tol = +e.target.value; $('tolv').textContent = prof().tol + ' de 100'; save(); dirty = true; });
+  $$('#seg-modo button').forEach(function (b) { b.addEventListener('click', function () { S.mode = b.getAttribute('data-mode'); save(); dirty = true; refresh(); }); });
+  var hold = $('hold');
+  function holdSet(on) { holdOrig = on; hold.classList.toggle('on', on); dirty = true; }
+  hold.addEventListener('pointerdown', function (e) { e.preventDefault(); try { hold.setPointerCapture(e.pointerId); } catch (x) {} holdSet(true); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) { hold.addEventListener(ev, function () { holdSet(false); }); });
+  hold.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  hold.addEventListener('keydown', function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); holdSet(true); } });
+  hold.addEventListener('keyup', function () { holdSet(false); });
+
+  /* ---------- Ajustes ---------- */
+  function renderPerfiles() {
+    var h = '';
+    PERFILES.forEach(function (p) {
+      var x = S.profiles[p.id];
+      h += '<div class="card"><div class="profrow"><div><b>' + p.nombre + '</b><div class="muted">' + (x.cal ? '<span class="gains">' + gainsTxt(x.gains) + '</span>' : 'Sin calibrar') + '</div><div class="muted num">Tolerancia ' + x.tol + ' de 100</div></div>' +
+        '<button type="button" class="btn" data-reset="' + p.id + '">Restablecer</button></div></div>';
+    });
+    $('perfiles').innerHTML = h;
+    $$('[data-reset]').forEach(function (b) { b.addEventListener('click', function () { S.profiles[b.getAttribute('data-reset')] = { gains: [1, 1, 1], tol: 50, cal: false }; save(); dirty = true; refresh(); }); });
+  }
+  function renderParams() {
+    var P = S.params;
+    $('params').innerHTML =
+      '<div class="field"><label for="p-area">Área mínima de mancha<small>% del cuadro</small></label><input type="number" id="p-area" inputmode="decimal" min="0.05" max="10" step="0.05" value="' + P.areaMinPct + '"></div>' +
+      '<div class="field"><label for="p-circ">Circularidad mínima<small>0 a 1</small></label><input type="number" id="p-circ" inputmode="decimal" min="0" max="1" step="0.05" value="' + P.circMin + '"></div>' +
+      '<div class="field"><label for="p-ker">Kernel morfológico<small>Avanzado</small></label><select id="p-ker">' + [3, 5, 7].map(function (k) { return '<option value="' + k + '"' + (P.kernel === k ? ' selected' : '') + '>' + k + '×' + k + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label for="p-res">Resolución de análisis<small>Menor es más fluido</small></label><select id="p-res">' + [[320, '320×240'], [480, '480×360'], [640, '640×480']].map(function (r) { return '<option value="' + r[0] + '"' + (P.res === r[0] ? ' selected' : '') + '>' + r[1] + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label for="p-cu">Alerta: más verde<small>Color y símbolo −</small></label><input type="color" id="p-cu" value="' + S.colors.under + '"></div>' +
+      '<div class="field"><label for="p-co">Alerta: más maduro<small>Color y símbolo +</small></label><input type="color" id="p-co" value="' + S.colors.over + '"></div>';
+    function num(id, key, lo, hi) { $(id).addEventListener('change', function (e) { var v = parseFloat(e.target.value); if (isNaN(v)) v = C.DEFAULT_PARAMS[key]; S.params[key] = Math.min(hi, Math.max(lo, v)); e.target.value = S.params[key]; save(); dirty = true; }); }
+    num('p-area', 'areaMinPct', 0.05, 10); num('p-circ', 'circMin', 0, 1);
+    $('p-ker').addEventListener('change', function (e) { S.params.kernel = +e.target.value; save(); dirty = true; });
+    $('p-res').addEventListener('change', function (e) { S.params.res = +e.target.value; sampleCache = null; save(); dirty = true; });
+    $('p-cu').addEventListener('input', function (e) { S.colors.under = e.target.value; save(); dirty = true; refresh(); });
+    $('p-co').addEventListener('input', function (e) { S.colors.over = e.target.value; save(); dirty = true; refresh(); });
+  }
+  function renderEditor() {
+    var h = '';
+    S.scale.forEach(function (L, i) {
+      var r1 = L.h[0] || ['', ''], r2 = L.h[1] || ['', ''];
+      function fld(f, lab, val) { return '<label>' + lab + '<input type="number" inputmode="numeric" data-n="' + i + '" data-f="' + f + '" value="' + val + '"></label>'; }
+      h += '<details><summary><span class="dot" style="background:' + SW[i][0] + '"></span>Nivel ' + L.nivel + ' · ' + L.nombre + '</summary><div class="lvgrid">' +
+        fld('h1lo', 'H desde', r1[0]) + fld('h1hi', 'H hasta', r1[1]) + fld('h2lo', 'H2 desde', r2[0]) + fld('h2hi', 'H2 hasta', r2[1]) +
+        fld('smin', 'S mínima', L.s_min) + fld('vmin', 'V mínima', L.v_min) + fld('vmax', 'V máxima', L.v_max) + '</div></details>';
+    });
+    $('editor').innerHTML = h;
+    $$('#editor input').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var L = S.scale[+inp.getAttribute('data-n')], f = inp.getAttribute('data-f'), el = {};
+        $$('#editor input[data-n="' + inp.getAttribute('data-n') + '"]').forEach(function (x) { el[x.getAttribute('data-f')] = x.value; });
+        function iv(v, lo, hi) { var n = parseInt(v, 10); return isNaN(n) ? null : Math.min(hi, Math.max(lo, n)); }
+        var a = iv(el.h1lo, 0, 179), b = iv(el.h1hi, 0, 179), c = iv(el.h2lo, 0, 179), d = iv(el.h2hi, 0, 179), hs = [];
+        if (a !== null && b !== null && a <= b) hs.push([a, b]);
+        if (c !== null && d !== null && c <= d) hs.push([c, d]);
+        if (hs.length) L.h = hs;
+        var s = iv(el.smin, 0, 255), v1 = iv(el.vmin, 0, 255), v2 = iv(el.vmax, 0, 255);
+        if (s !== null) L.s_min = s; if (v1 !== null) L.v_min = v1; if (v2 !== null) L.v_max = v2;
+        save(); dirty = true; renderEditorValues();
+      });
+    });
+  }
+  function renderEditorValues() {
+    $$('#editor input').forEach(function (inp) {
+      var L = S.scale[+inp.getAttribute('data-n')], f = inp.getAttribute('data-f'), r1 = L.h[0] || ['', ''], r2 = L.h[1] || ['', ''];
+      var m = { h1lo: r1[0], h1hi: r1[1], h2lo: r2[0], h2hi: r2[1], smin: L.s_min, vmin: L.v_min, vmax: L.v_max };
+      inp.value = m[f];
+    });
+  }
+  var armed = 0;
+  $('factory').addEventListener('click', function () {
+    if (!armed) {
+      $('factory-msg').hidden = false; $('factory').textContent = 'Confirmar: restaurar todo'; armed = setTimeout(function () { armed = 0; $('factory-msg').hidden = true; $('factory').textContent = 'Restaurar valores de fábrica'; }, 5000);
+      return;
+    }
+    clearTimeout(armed); armed = 0; var th = S.theme; S = defaults(); S.theme = th; save();
+    $('factory-msg').hidden = true; $('factory').textContent = 'Restaurar valores de fábrica'; sampleCache = null; fullRender(); go('dia');
+  });
+  $$('#seg-tema button').forEach(function (b) { b.addEventListener('click', function () { S.theme = b.getAttribute('data-theme-set'); save(); applyTheme(); }); });
+  function applyTheme() {
+    var r = document.documentElement;
+    if (S.theme === 'light' || S.theme === 'dark') r.setAttribute('data-theme', S.theme); else r.removeAttribute('data-theme');
+    $$('#seg-tema button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-set') === S.theme)); });
+  }
+
+  /* ---------- Refresco de textos ---------- */
+  function refresh() {
+    $('resumen').textContent = reqTexto();
+    renderLevels();
+    renderSeg('seg-perfil-dia'); renderSeg('seg-perfil-cal');
+    var p = prof();
+    $('perfil-estado').textContent = p.cal ? 'Perfil ' + perfilNombre(S.perfil) + ' calibrado.' : 'Perfil ' + perfilNombre(S.perfil) + ' sin calibrar. Calibra si cambió la luz.';
+    $('gains').textContent = p.cal ? gainsTxt(p.gains) : 'Sin calibrar: ganancias 1.00 en los tres canales.';
+    $('calibrar').disabled = SRC.mode === 'sample';
+    $('cal-pill').hidden = SRC.mode !== 'sample';
+    $('cal-pill').lastChild.textContent = 'Usa cámara o foto para calibrar';
+    $('tol').value = p.tol; $('tolv').textContent = p.tol + ' de 100';
+    $$('#seg-modo button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-mode') === S.mode)); });
+    $('campo-sub').textContent = reqTexto();
+    $('chip-luz').textContent = 'Luz: ' + perfilNombre(S.perfil) + (p.cal ? ' · calibrada' : ' · sin calibrar');
+    $('chip-src').textContent = srcLabel();
+    $$('[data-srcnote]').forEach(function (n) { n.textContent = srcNote(); });
+    $('legend').innerHTML = S.mode === 'alerta'
+      ? '<span><i style="background:' + S.colors.under + '">−</i>Más verde de lo pedido</span><span><i style="background:' + S.colors.over + '">+</i>Más maduro de lo pedido</span>'
+      : '<span>Solo se ve a color lo que cumple el pedido.</span>';
+    $('hold').hidden = false;
+    $('fecha').textContent = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (view === 'aj') renderPerfiles();
+  }
+  function fullRender() { renderPerfiles(); renderParams(); renderEditor(); applyTheme(); refresh(); }
+
+  /* ---------- Ciclo de dibujo ---------- */
+  function loop() {
+    requestAnimationFrame(loop);
+    if (document.hidden) return;
+    var live = SRC.mode === 'live';
+    if (view === 'campo' && (live || dirty)) { dirty = false; drawField(); }
+    else if (view === 'cal' && (live || dirty)) { dirty = false; drawCal(); }
+  }
+  fullRender();
+  loop();
+})();
+</script>
+
+</body>
+</html>
